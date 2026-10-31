@@ -1,0 +1,39 @@
+Package: csvschema
+Title: Self-Describing CSV Files with Embedded, Loss-Tolerant Schemas
+Version: 0.0.0.9000
+Authors@R:
+    person("Jesse", "Lecy", email = "jdlecy@gmail.com", role = c("aut", "cre"))
+Description: Writes and reads CSV files that carry their own schema inside
+    ordinary data columns, so the file opens as a plain CSV in every tool and
+    the schema survives sorting, filtering, row loss, encoding changes, and
+    spreadsheet round-trips. A table schema (field names, types, formats,
+    missing codes, factor levels, keys) is packetized into short ASCII tokens
+    and spread redundantly through '_schema' columns; the schema is recovered
+    from any surviving subset of rows, verified, and applied on read. A
+    '_canary' column stores fragile sample values per variable so corruption of
+    the data itself is detected and diagnosed. An optional Frictionless
+    'datapackage.json' sidecar cross-checks the in-band schema.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 3.5.0)
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    digest,
+    jsonlite,
+    stats,
+    tools,
+    utils
+Suggests:
+    data.table,
+    frictionless,
+    haven,
+    knitr,
+    readr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+URL: https://github.com/lecy/csvschema
+BugReports: https://github.com/lecy/csvschema/issues

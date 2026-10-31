@@ -1,0 +1,10 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^README\.Rmd$
+^\.github$
+^R package plan\.md$
+^doc$
+^Meta$
+^\.vscode$
+^data-raw$
