@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">csvschema</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -16,9 +16,11 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/csvschema.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="../articles/big-idea.html">Big Idea</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/corruption.html">Corruption: detecting and naming damage</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/big-idea.html">The big idea</a></li>
+    <li><a class="dropdown-item" href="../articles/corruption.html">Corruption: detecting and naming damage</a></li>
     <li><a class="dropdown-item" href="../articles/design.html">Design: the wire format and the redundancy math</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -45,8 +47,8 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.0.9000" id="csvschema-0009000">csvschema 0.0.0.9000<a class="anchor" aria-label="anchor" href="#csvschema-0009000"></a></h2>
-<p>Initial implementation, built bottom-up from the design brief.</p>
+<h2 class="pkg-version" data-toc-text="0.1.0" id="csvschema-010">csvschema 0.1.0<a class="anchor" aria-label="anchor" href="#csvschema-010"></a></h2>
+<p>First release. Built bottom-up from the design brief.</p>
 <ul><li>
 <strong>Codec</strong> (<code>encode.R</code>): percent-encoding to a pure-ASCII, separator-safe token form (<code><a href="../reference/cs_encode_token.html">cs_encode_token()</a></code>/<code><a href="../reference/cs_decode_token.html">cs_decode_token()</a></code>) and <code><a href="../reference/cs_crc32.html">cs_crc32()</a></code>.</li>
 <li>
@@ -68,9 +70,9 @@
 <li>
 <strong>Compatibility matrix</strong> (<code>inst/compat/</code>): a 2,000-row fixture round-tripped through the scriptable CSV tools (base R, readr, data.table, arrow, vroom, line-based subsets), with per-tool recovery and canary results; regenerate with <code>data-raw/make_compat.R</code>.</li>
 <li>
-<strong>Documentation site</strong>: a pkgdown site (NODC pkgstyle template) with three vignettes, hosted from <code>main</code>/<code>docs</code>.</li>
+<strong>Documentation site</strong>: a pkgdown site (NODC pkgstyle template) hosted from <code>main</code>/<code>docs</code>, with four vignettes — “The big idea” (the internet-packet metaphor end to end), the quick start, corruption, and design.</li>
 </ul><div class="section level3">
-<h3 id="design-notes-and-known-limits-0-0-0-9000">Design notes and known limits<a class="anchor" aria-label="anchor" href="#design-notes-and-known-limits-0-0-0-9000"></a></h3>
+<h3 id="design-notes-and-known-limits-0-1-0">Design notes and known limits<a class="anchor" aria-label="anchor" href="#design-notes-and-known-limits-0-1-0"></a></h3>
 <ul><li>The package name is <code>csvschema</code> and the API prefix is <code>cs_</code> (the brief used the working name <code>schemaless</code> / <code>sl_</code>).</li>
 <li>The rotating stripe guarantees recovery from a <code><a href="https://rdrr.io/r/utils/head.html" class="external-link">head()</a></code>/prefix, from any window of at least <code>2P - 1</code> consecutive rows, from full-file reads, and from the systematic every-<code>P</code>-th-row sample. A single period-<code>P</code> stripe cannot also guarantee every arbitrary strided sample in its first <code>P</code> terms; heavy arbitrary strides rely on the redundancy <code>r</code>, not the stripe.</li>
 <li>Case folding of every cell is <strong>detected, not recovered</strong>: the per-packet CRC covers the exact-case payload, so folded payloads fail their CRC and are dropped. Recovery reports the loss rather than returning a silently wrong schema.</li>

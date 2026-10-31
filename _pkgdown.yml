@@ -9,9 +9,17 @@ template:
 
 navbar:
   structure:
-    left: [intro, articles, reference, news]
+    left: [intro, bigidea, articles, reference, news]
+  components:
+    bigidea:
+      text: Big Idea
+      href: articles/big-idea.html
 
 articles:
+- title: The big idea
+  navbar: ~
+  contents:
+  - big-idea
 - title: Guides
   navbar: ~
   contents:

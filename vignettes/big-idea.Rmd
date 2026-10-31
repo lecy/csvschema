@@ -1,0 +1,266 @@
+---
+title: "The big idea"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{The big idea}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r}
+library(csvschema)
+```
+
+A CSV forgets everything but the text. `csvschema` keeps the schema with the
+data by borrowing the trick the internet uses to move data over an unreliable
+network: cut the thing into small, self-checking **packets**, send many copies
+by different routes, and reassemble whatever arrives --- verifying at the end
+that the reassembled whole is the right one.
+
+This article shows the idea end to end on a tiny example.
+
+## 1. A little data
+
+We use four columns of the built-in `dg_states` table.
+
+```{r}
+head(dg_states[, c("state", "region", "population", "south")])
+```
+
+## 2. Its schema
+
+`cs_schema()` reads the column classes into a schema. It is exactly a
+Frictionless Table Schema --- types, the factor's categories, the key:
+
+```{r}
+ex <- dg_states[, c("state", "region", "population", "south")]
+s <- cs_schema(ex, primary_key = "state")
+cat(jsonlite::toJSON(cs_schema_to_frictionless(s), pretty = TRUE,
+                     auto_unbox = TRUE))
+```
+
+## 3. The schema as packets
+
+`cs_packetize()` atomizes that schema into short ASCII tokens. Each is one
+unquoted CSV cell: a type-and-index id, the payload, and a CRC-32, wrapped in
+`{{ }}`. Packet `S0` is the header (it carries the whole-schema hash); `S1`–`S4`
+are the fields; the last is the table packet with the primary key.
+
+```{r}
+writeLines(cs_packetize(s))
+```
+
+These packets are then copied and spread across the rows of a `_schema` column.
+Any surviving subset of rows that contains one copy of each is enough to rebuild
+the schema.
+
+## The internet metaphor
+
+The design separates the same three problems TCP/IP does, and solves two of
+them the same way. The third it cannot, so it does something else.
+
+```{=html}
+<figure>
+<svg viewBox="0 0 760 650" width="100%" style="max-width:760px;height:auto;font-family:sans-serif;font-size:13px" role="img" aria-label="Schema atomized into packets, scattered across _schema cells with some dropped, then reassembled and verified">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- stage numbers -->
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <polygon points="20,58 20,92 52,75" fill="#153243" stroke="none"/>
+    <polygon points="20,318 20,352 52,335" fill="#153243" stroke="none"/>
+    <polygon points="20,560 20,594 52,577" fill="#153243" stroke="none"/>
+  </g>
+  <g fill="#ffffff" font-weight="bold">
+    <text x="28" y="80">1</text>
+    <text x="28" y="340">2</text>
+    <text x="28" y="582">3</text>
+  </g>
+
+  <!-- ===== Stage 1: atomize ===== -->
+  <text x="70" y="30" font-weight="bold" fill="currentColor">Atomize the schema into packets</text>
+  <!-- schema bar -->
+  <g stroke="currentColor" stroke-width="1">
+    <rect x="300" y="42" width="43" height="24" fill="#e23b2e"/>
+    <rect x="343" y="42" width="43" height="24" fill="#15b9c6"/>
+    <rect x="386" y="42" width="43" height="24" fill="#38a83e"/>
+    <rect x="429" y="42" width="43" height="24" fill="#f2b90a"/>
+    <rect x="472" y="42" width="43" height="24" fill="#cf3bcf"/>
+    <rect x="515" y="42" width="43" height="24" fill="#2d57d8"/>
+  </g>
+  <text x="300" y="38" fill="currentColor">Table schema</text>
+  <line x1="429" y1="66" x2="429" y2="86" stroke="currentColor" marker-end="url(#ah)"/>
+  <ellipse cx="429" cy="104" rx="56" ry="17" fill="none" stroke="currentColor"/>
+  <text x="429" y="109" text-anchor="middle" fill="currentColor">cs_packetize()</text>
+  <line x1="429" y1="121" x2="429" y2="140" stroke="currentColor" marker-end="url(#ah)"/>
+  <!-- source packets -->
+  <g stroke="currentColor" stroke-width="1" font-size="11" text-anchor="middle">
+    <circle cx="300" cy="160" r="13" fill="#e23b2e"/><text x="300" y="164" fill="#fff">S0</text>
+    <circle cx="348" cy="160" r="13" fill="#15b9c6"/><text x="348" y="164" fill="#fff">S1</text>
+    <circle cx="396" cy="160" r="13" fill="#38a83e"/><text x="396" y="164" fill="#fff">S2</text>
+    <circle cx="444" cy="160" r="13" fill="#f2b90a"/><text x="444" y="164" fill="#000">S3</text>
+    <circle cx="492" cy="160" r="13" fill="#cf3bcf"/><text x="492" y="164" fill="#fff">S4</text>
+    <circle cx="540" cy="160" r="13" fill="#2d57d8"/><text x="540" y="164" fill="#fff">S5</text>
+  </g>
+  <text x="300" y="192" fill="currentColor">each packet carries its index, the total count, and a CRC-32</text>
+
+  <!-- ===== Stage 2: scatter across cells (routes) ===== -->
+  <text x="70" y="226" font-weight="bold" fill="currentColor">Copy and stripe across the _schema cells &#8212; the routes</text>
+  <text x="70" y="244" fill="currentColor">A deleted row or a mangled cell is a dead end: the packet fails its CRC and is dropped.</text>
+
+  <!-- distribution arrows (representative) -->
+  <g stroke="currentColor" stroke-width="0.8" opacity="0.5">
+    <line x1="340" y1="173" x2="235" y2="262" marker-end="url(#ah)"/>
+    <line x1="420" y1="173" x2="400" y2="262" marker-end="url(#ah)"/>
+    <line x1="500" y1="173" x2="600" y2="262" marker-end="url(#ah)"/>
+  </g>
+
+  <!-- grid of cells -->
+  <!-- row A -->
+  <g font-size="0">
+  </g>
+  <!-- helper: each cell = rounded rect + dot; garbled = gray dot + red X + dashed -->
+  <g stroke="currentColor">
+    <!-- A -->
+    <rect x="196" y="270" width="78" height="40" rx="5" fill="none"/><circle cx="235" cy="290" r="11" fill="#e23b2e"/>
+    <rect x="316" y="270" width="78" height="40" rx="5" fill="none"/><circle cx="355" cy="290" r="11" fill="#15b9c6"/>
+    <rect x="436" y="270" width="78" height="40" rx="5" fill="none"/><circle cx="475" cy="290" r="11" fill="#38a83e"/>
+    <rect x="556" y="270" width="78" height="40" rx="5" fill="none"/><circle cx="595" cy="290" r="11" fill="#f2b90a"/>
+    <!-- B -->
+    <rect x="196" y="326" width="78" height="40" rx="5" fill="none"/><circle cx="235" cy="346" r="11" fill="#cf3bcf"/>
+    <rect x="316" y="326" width="78" height="40" rx="5" fill="none"/><circle cx="355" cy="346" r="11" fill="#2d57d8"/>
+    <rect x="436" y="326" width="78" height="40" rx="5" stroke-dasharray="3 3" fill="none"/><circle cx="475" cy="346" r="11" fill="#9aa3ab"/>
+    <rect x="556" y="326" width="78" height="40" rx="5" fill="none"/><circle cx="595" cy="346" r="11" fill="#15b9c6"/>
+    <!-- C -->
+    <rect x="196" y="382" width="78" height="40" rx="5" fill="none"/><circle cx="235" cy="402" r="11" fill="#38a83e"/>
+    <rect x="316" y="382" width="78" height="40" rx="5" stroke-dasharray="3 3" fill="none"/><circle cx="355" cy="402" r="11" fill="#9aa3ab"/>
+    <rect x="436" y="382" width="78" height="40" rx="5" fill="none"/><circle cx="475" cy="402" r="11" fill="#cf3bcf"/>
+    <rect x="556" y="382" width="78" height="40" rx="5" fill="none"/><circle cx="595" cy="402" r="11" fill="#2d57d8"/>
+    <!-- D -->
+    <rect x="196" y="438" width="78" height="40" rx="5" fill="none"/><circle cx="235" cy="458" r="11" fill="#e23b2e"/>
+    <rect x="316" y="438" width="78" height="40" rx="5" fill="none"/><circle cx="355" cy="458" r="11" fill="#f2b90a"/>
+    <rect x="436" y="438" width="78" height="40" rx="5" stroke-dasharray="3 3" fill="none"/><circle cx="475" cy="458" r="11" fill="#9aa3ab"/>
+    <rect x="556" y="438" width="78" height="40" rx="5" fill="none"/><circle cx="595" cy="458" r="11" fill="#38a83e"/>
+  </g>
+  <!-- red X over the three garbled dots -->
+  <g stroke="#e23b2e" stroke-width="2.5" stroke-linecap="round">
+    <line x1="468" y1="339" x2="482" y2="353"/><line x1="482" y1="339" x2="468" y2="353"/>
+    <line x1="348" y1="395" x2="362" y2="409"/><line x1="362" y1="395" x2="348" y2="409"/>
+    <line x1="468" y1="451" x2="482" y2="465"/><line x1="482" y1="451" x2="468" y2="465"/>
+  </g>
+  <text x="640" y="350" fill="#e23b2e" font-size="11">dead end:</text>
+  <text x="640" y="364" fill="#e23b2e" font-size="11">CRC fails,</text>
+  <text x="640" y="378" fill="#e23b2e" font-size="11">dropped</text>
+
+  <!-- collection arrows (survivors) -->
+  <g stroke="currentColor" stroke-width="0.8" opacity="0.5">
+    <line x1="235" y1="478" x2="380" y2="520" marker-end="url(#ah)"/>
+    <line x1="595" y1="478" x2="480" y2="520" marker-end="url(#ah)"/>
+  </g>
+
+  <!-- ===== Stage 3: reassemble + verify ===== -->
+  <text x="70" y="512" font-weight="bold" fill="currentColor">Deduplicate, reassemble, verify</text>
+  <ellipse cx="429" cy="534" rx="52" ry="16" fill="none" stroke="currentColor"/>
+  <text x="429" y="539" text-anchor="middle" fill="currentColor">cs_recover()</text>
+  <line x1="429" y1="550" x2="429" y2="566" stroke="currentColor" marker-end="url(#ah)"/>
+  <g stroke="currentColor" stroke-width="1">
+    <rect x="300" y="568" width="43" height="24" fill="#e23b2e"/>
+    <rect x="343" y="568" width="43" height="24" fill="#15b9c6"/>
+    <rect x="386" y="568" width="43" height="24" fill="#38a83e"/>
+    <rect x="429" y="568" width="43" height="24" fill="#f2b90a"/>
+    <rect x="472" y="568" width="43" height="24" fill="#cf3bcf"/>
+    <rect x="515" y="568" width="43" height="24" fill="#2d57d8"/>
+  </g>
+  <text x="300" y="610" fill="currentColor">the same schema, rebuilt without loss</text>
+  <g>
+    <circle cx="585" cy="580" r="13" fill="#38a83e"/>
+    <path d="M579,580 l4,5 l8,-10" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="604" y="578" fill="currentColor" font-size="11">whole-schema</text>
+    <text x="604" y="591" fill="currentColor" font-size="11">hash verified</text>
+  </g>
+</svg>
+<figcaption style="font-size:12px;opacity:0.8">The schema is atomized into CRC-checked packets, copied and striped across the
+<code>_schema</code> cells by different routes; packets that are mangled or whose rows are
+deleted fail their CRC and are dropped, while the surviving copies are
+deduplicated and reassembled, and a whole-schema hash confirms the result.</figcaption>
+</figure>
+```
+
+### 1. Fragmentation metadata --- *which piece, and how many?*
+
+An IP fragment carries an identification number, an offset, and a
+more-fragments flag. A csvschema packet carries `S<k>/<P>`: the index *k* and
+the total *P* (in **every** packet, so losing the last one is still detectable).
+The "identification" that groups a set is the whole-schema hash in packet `S0`.
+
+### 2. Per-piece integrity --- *is this piece intact?*
+
+Every IP/TCP/UDP header has a checksum; Ethernet frames a CRC-32. The receiver
+recomputes it and, on a mismatch, **discards** the piece. A csvschema packet
+ends with a CRC-32 over its `id~payload`. On read, a packet that fails is
+dropped exactly as if its row had been deleted:
+
+```{r}
+pk <- cs_packetize(s)
+tampered <- pk[3]
+substr(tampered, 12, 12) <- "X"          # a spreadsheet, or find-and-replace
+parsed <- cs_parse_packets(c(pk[3], tampered))
+parsed[, c("type", "index", "crc_ok")]
+```
+
+The garbled copy is the dead end in the diagram; the intact copy carries the
+same packet, so the schema still rebuilds. Because the packet column holds many
+copies, the few that die do not matter:
+
+```{r}
+# the real file keeps lots of copies, so recovery is unaffected
+tmp <- tempfile(fileext = ".csv")
+cs_write(ex, tmp, sidecar = FALSE, verbose = FALSE)
+cs_report(cs_read_csv(tmp, verbose = FALSE))$status
+```
+
+### 3. Whole-object verification --- *is the reassembled thing the right thing?*
+
+A BitTorrent client checks each piece *and* an info-hash over the whole file, so
+pieces collected from many peers still assemble into exactly the published file.
+Packet `S0` carries a hash over the canonical schema text; `cs_recover()`
+recomputes it after reassembly. A mismatch means **version mixing** --- two
+different schemas were bound together --- and is reported, not accepted.
+
+## Is the corruption check the handshake?
+
+Not quite --- and the difference is the whole point.
+
+TCP's handshake and its *resend of garbled datagrams* (the loop in the classic
+diagram) need a **two-way conversation**: the receiver tells the sender what
+arrived, and the sender retransmits the rest. A CSV file is a **one-way
+broadcast** --- it is read long after it was written, by someone who cannot ask
+for a resend.
+
+So csvschema keeps only the halves of the idea that work without a back-channel:
+
+* The **CRC-32 on each packet** is the per-datagram *checksum* --- it detects a
+  garbled packet and drops it. That is the "is this piece intact?" check, not a
+  handshake.
+* With no way to request a resend, it **sends many copies up front** instead ---
+  forward error correction by repetition, like PAR2 blocks for Usenet or the
+  redundancy in a QR code. The [redundancy math](design.html) sizes how many
+  copies survive a given fraction of row loss.
+* The **whole-schema hash** is the final "is this the right thing?" check, like
+  BitTorrent's info-hash.
+
+Detection and redundancy, computed once and frozen into the file; no
+conversation required.
+
+## See also
+
+* `vignette("csvschema")` --- the quick start.
+* `vignette("corruption")` --- the threat model and the corruption simulators.
+* `vignette("design")` --- the wire format and the redundancy math in full.

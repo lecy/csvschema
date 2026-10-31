@@ -1,6 +1,6 @@
 Package: csvschema
 Title: Self-Describing CSV Files with Embedded, Loss-Tolerant Schemas
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R:
     person("Jesse", "Lecy", email = "jdlecy@gmail.com", role = c("aut", "cre"))
 Description: Writes and reads CSV files that carry their own schema inside

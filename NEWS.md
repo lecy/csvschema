@@ -1,6 +1,6 @@
-# csvschema 0.0.0.9000
+# csvschema 0.1.0
 
-Initial implementation, built bottom-up from the design brief.
+First release. Built bottom-up from the design brief.
 
 * **Codec** (`encode.R`): percent-encoding to a pure-ASCII, separator-safe token
   form (`cs_encode_token()`/`cs_decode_token()`) and `cs_crc32()`.
@@ -30,8 +30,9 @@ Initial implementation, built bottom-up from the design brief.
   through the scriptable CSV tools (base R, readr, data.table, arrow, vroom,
   line-based subsets), with per-tool recovery and canary results; regenerate
   with `data-raw/make_compat.R`.
-* **Documentation site**: a pkgdown site (NODC pkgstyle template) with three
-  vignettes, hosted from `main`/`docs`.
+* **Documentation site**: a pkgdown site (NODC pkgstyle template) hosted from
+  `main`/`docs`, with four vignettes --- "The big idea" (the internet-packet
+  metaphor end to end), the quick start, corruption, and design.
 
 ## Design notes and known limits
 
