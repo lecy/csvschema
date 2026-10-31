@@ -3,8 +3,12 @@
 ^LICENSE\.md$
 ^README\.Rmd$
 ^\.github$
-^R package plan\.md$
+^dev$
 ^doc$
 ^Meta$
 ^\.vscode$
 ^data-raw$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^vignettes/articles$

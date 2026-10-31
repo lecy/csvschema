@@ -1,0 +1,139 @@
+---
+title: "Corruption: detecting and naming damage"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Corruption: detecting and naming damage}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r}
+library(csvschema)
+```
+
+The wire format assumes a hostile channel: any CSV dialect, any locale, any
+spreadsheet, any human with find-and-replace. `csvschema` ships a simulator for
+every vector in its threat model --- the `cs_corrupt_*()` family --- so you can
+apply a named corruption to a file and watch the reader recover from it, or
+report exactly what broke.
+
+```{r}
+# A small fixture with values chosen to trip real spreadsheet coercions.
+fixture <- data.frame(
+  zip    = sprintf("%05d", c(1, 23, 456, 7890, 12345)),  # leading zeros
+  bigid  = sprintf("1%015d", 1:5),                        # 16-digit strings
+  region = factor(c("NE", "S", "MW", "W", "S")),
+  note   = c("SEPT1", "Café", "normal", "0.5", "=SUM(A1)"),
+  stringsAsFactors = FALSE
+)
+
+# Helpers: write the fixture, corrupt the file, read it back.
+read_chr <- function(path) {
+  read.csv(path, colClasses = "character", check.names = FALSE,
+           na.strings = character(0))
+}
+write_chr <- function(df) {
+  tmp <- tempfile(fileext = ".csv")
+  utils::write.table(df, tmp, sep = ",", row.names = FALSE, na = "",
+                     qmethod = "double", eol = "\n")
+  tmp
+}
+```
+
+## Two layers of protection
+
+The schema packets are protected by a per-packet CRC and a whole-schema hash;
+the **data** is protected by the `_canary` column, which stores a purposeful
+sample of each variable's most fragile values plus a fingerprint of the whole
+column. Recovery and canary results are independent: a file can lose rows (the
+data changes, the schema survives) or be mangled by a spreadsheet (the schema
+survives, the data is damaged).
+
+## Row loss: schema survives, canary notices
+
+Dropping rows at random leaves the striped, repeated schema intact:
+
+```{r}
+path <- tempfile(fileext = ".csv")
+cs_write(fixture, path, verbose = FALSE)
+
+thinned <- cs_corrupt_rows(read_chr(path), keep = 0.5, mode = "random", seed = 1)
+out <- cs_read_csv(write_chr(thinned), sidecar = FALSE, verbose = FALSE)
+cs_report(out)$status
+```
+
+## Spreadsheet coercion: schema survives, damage is named
+
+`cs_corrupt_excel()` reproduces what a spreadsheet does on import: it strips
+leading zeros, renders long digit strings in scientific notation, coerces
+date-like strings to dates, and turns formula cells into `#NAME?`. The packets
+(which begin with `{{`) match none of those rules, so the schema still verifies
+--- but the canary check finds the damaged values and says *which kind* of
+damage hit each variable.
+
+```{r}
+damaged <- cs_corrupt_excel(read_chr(path))
+out <- suppressWarnings(cs_read_csv(write_chr(damaged), sidecar = FALSE,
+                                    verbose = FALSE))
+rep <- cs_report(out)
+rep$status                                   # schema still verified
+rep$canary[, c("variable", "verdict", "damage")]
+```
+
+Each damaged variable is mapped back to the detector that selected its lost
+canary value, so `zip` reads "leading_zero", a coerced date reads "date_like",
+and so on.
+
+## Case folding: detected, not silently wrong
+
+Some mainframe and SQL loaders upper- or lower-case every cell. That folds the
+packet payloads too, and because each packet's CRC covers the exact-case
+payload, the folded packets fail their check and are dropped. The reader does
+**not** return a silently wrong schema --- it reports the loss:
+
+```{r}
+folded <- cs_corrupt_case(read_chr(path), mode = "upper")
+out <- suppressWarnings(cs_read_csv(write_chr(folded), sidecar = FALSE,
+                                    verbose = FALSE))
+cs_report(out)$status                         # incomplete or absent, never verified
+```
+
+## The simulator family
+
+```{r echo = FALSE}
+knitr::kable(data.frame(
+  Function = c("cs_corrupt_rows", "cs_corrupt_columns", "cs_corrupt_header",
+               "cs_corrupt_excel", "cs_corrupt_encoding", "cs_corrupt_bom",
+               "cs_corrupt_delimiter", "cs_corrupt_smartquotes",
+               "cs_corrupt_whitespace", "cs_corrupt_truncate",
+               "cs_corrupt_case", "cs_corrupt_merge", "cs_corrupt_eol",
+               "cs_corrupt_replace", "cs_corrupt_invisible"),
+  Vector = c("drop / reorder / duplicate rows",
+             "drop columns; Text-to-Columns split",
+             "remove or regenerate the header",
+             "spreadsheet import coercions",
+             "re-encode (mojibake), NFC/NFD",
+             "prepend a UTF-8 BOM",
+             "rewrite the delimiter",
+             "straight quotes to curly, -- to em dash",
+             "trim, pad, non-breaking spaces",
+             "truncate every cell",
+             "upper / lower / title case",
+             "bind two different schemas",
+             "CRLF / LF swap, drop trailing newline",
+             "global find-and-replace",
+             "insert zero-width and invisible characters")
+), col.names = c("Function", "What it does"))
+```
+
+Each simulator records what it did in a `cs_corruption` attribute, so a
+round-trip through several of them is self-documenting:
+
+```{r}
+x <- cs_corrupt_rows(read_chr(path), keep = 0.5, seed = 1)
+attr(cs_corrupt_excel(x), "cs_corruption")
+```

@@ -1,0 +1,148 @@
+---
+title: "Design: the wire format and the redundancy math"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Design: the wire format and the redundancy math}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r}
+library(csvschema)
+```
+
+A CSV passed between programs is a one-way broadcast over an erasure channel:
+rows vanish, cells get damaged, and there is no way to ask the sender for a
+resend. The internet solved the same problem decades ago by assuming a hostile
+channel and encoding everything else. `csvschema` borrows three of its ideas:
+fragmentation metadata, per-piece integrity, and whole-object verification.
+
+## A packet is one ASCII token
+
+Every piece of the schema is a single unquoted token of the form
+`{{<id>~<payload>~<crc>}}`. No comma, semicolon, tab, pipe, quote, newline, or
+whitespace appears inside it, so no CSV dialect ever needs to quote it and no
+delimiter rewriting can change it. Non-ASCII bytes are percent-encoded and
+spaces become `+`:
+
+```{r}
+cs_encode_token("Public charity")
+cs_encode_token("Café")
+```
+
+Here are the actual packets for a small schema:
+
+```{r}
+s <- cs_schema(
+  data.frame(ein = "001234567", year = 2020L, rev = 1.5,
+             org = factor("Public charity"), stringsAsFactors = FALSE),
+  primary_key = "ein",
+  overrides = list(ein = list(constraints = list(pattern = "^[0-9]{9}$",
+                                                 unique = TRUE)))
+)
+writeLines(cs_packetize(s, mtu = 200))
+```
+
+Packet `S0` is the header (wire version, encoding, dialect, field count, row
+count, MTU, and the whole-schema hash). Packets `S1`..`Sn` are the fields in
+column order, and the last schema packet carries table-level properties such as
+the primary key. Each packet's attribute keys map one-to-one onto Frictionless
+Table Schema v2 field properties, so the sidecar and the packets are two
+encodings of the same model.
+
+## Three internet ideas, translated
+
+```{r echo = FALSE}
+knitr::kable(data.frame(
+  Internet = c("IP identification", "IP fragment offset",
+               "IP more-fragments flag", "TCP/UDP checksum, Ethernet CRC",
+               "BitTorrent info-hash", "TCP retransmission",
+               "PAR2 / fountain codes", "Path MTU"),
+  Purpose = c("group fragments of one datagram", "position of this piece",
+              "know when all pieces are in", "discard damaged pieces",
+              "reject mixed versions", "recover loss via back-channel",
+              "recover loss with no back-channel", "max piece the link accepts"),
+  csvschema = c("schema hash in packet 0", "k in S<k>/<P>",
+                "P carried in every packet", "CRC-32 suffix per packet",
+                "whole-schema hash recomputed after reassembly",
+                "not available; repetition coding instead",
+                "repetition now; erasure type reserved", "mtu argument")
+), col.names = c("Internet mechanism", "Purpose", "csvschema analogue"))
+```
+
+Each packet carries its own index *and* the total count, rather than a
+last-piece flag, because a flag fails when the last piece is the one lost. Each
+packet ends with a CRC-32 over `id~payload`; a packet that fails is dropped as
+if its row had been deleted. After reassembly, the whole-schema hash in packet
+0 is recomputed --- so a plausible mix of two schema versions is rejected even
+though every individual packet is valid.
+
+```{r}
+rec <- cs_recover(cs_parse_packets(cs_packetize(s)))
+rec$status
+```
+
+## How much redundancy?
+
+Repetition coding makes survival a coupon-collector problem. If a fraction *f*
+of rows is kept at random and each packet has *r* independent copies, a union
+bound over *P* packets gives the minimum copies as
+`ceiling( ln(P / eps) / -ln(1 - f) )`, which `cs_copies()` computes:
+
+```{r}
+f <- c(0.50, 0.20, 0.10, 0.05, 0.01)
+data.frame(
+  retained = f,
+  copies   = vapply(f, function(fi) cs_copies(20, fi, eps = 1e-6), integer(1))
+)
+```
+
+`cs_redundancy()` turns a required *r* into a concrete layout --- a number of
+schema columns *c* and packets per cell *p* --- preferring extra packets per
+cell (invisible) over extra columns, and `cs_survival()` reports the achieved
+failure probability for any layout:
+
+```{r}
+cs_redundancy(20, 2000, f = 0.2)$sentence
+cs_survival(20, 2000, c = 1, p = 1, f = 0.2)
+```
+
+## Striping
+
+Random row loss is the easy case. Structured loss --- a `head()`, a page of a
+paginated export, a systematic every-*k*-th sample --- is handled by a
+deterministic rotating stripe, so the packets are spread rather than clustered.
+`cs_stripe()` is pure arithmetic, so it is reproducible and testable:
+
+```{r}
+cs_stripe(P = 4, N = 8, c = 1, p = 1)
+```
+
+The stripe guarantees that the first `P` rows contain every packet (so a
+`head()` recovers), that any `2P - 1` consecutive rows do, that a full read
+does, and that the systematic every-`P`-th-row sample cycles through all
+packets. A single period-`P` stripe *cannot* also guarantee every arbitrary
+strided sample in its first `P` terms --- that is mathematically incompatible
+with the contiguous guarantee --- so heavy arbitrary strides rely on the
+redundancy `r`, not on the stripe.
+
+## What the format cannot do
+
+Three limits are worth stating plainly:
+
+* **Deleting every `_schema` column** removes the in-band schema entirely. Use
+  the sidecar (`cs_write(..., sidecar = TRUE)`), which is independent, or accept
+  that the file reads back as character columns with `status = "absent"`.
+* **Case-folding every cell** is detected, not recovered: the per-packet CRC
+  covers the exact-case payload, so folded payloads fail and are dropped.
+* **`NA` versus `""`**: with the default `missingValues = [""]`, an empty cell
+  reads back as `NA`; the two are indistinguishable once written with
+  `na = ""`. Numeric values are written at R's default precision.
+
+Erasure coding (which would recover from fewer surviving rows but destroy human
+readability and add a dependency) is reserved for a future version; the `E`
+packet type is left unused for it.

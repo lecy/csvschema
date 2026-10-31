@@ -1,0 +1,94 @@
+url: https://lecy.github.io/csvschema/
+destination: docs
+
+# The NODC site style (colours, fonts, navbar, light/dark switch) comes from
+# the pkgstyle template package. Do not add bslib settings or
+# pkgdown/extra.css here unless this site needs to differ.
+template:
+  package: pkgstyle
+
+navbar:
+  structure:
+    left: [intro, articles, reference, news]
+
+articles:
+- title: Guides
+  navbar: ~
+  contents:
+  - corruption
+  - design
+
+reference:
+- title: Overview
+  contents:
+  - csvschema-package
+
+- title: Write and read
+  desc: >
+    The one-call entry points: write a self-describing CSV, read it back with
+    the schema recovered and applied, and inspect the report.
+  contents:
+  - cs_write
+  - cs_read_csv
+  - cs_report
+  - cs_report_table
+
+- title: Schema model
+  desc: >
+    Build a schema from a data frame and convert to and from Frictionless
+    Table Schema v2 or plain reader specifications.
+  contents:
+  - cs_schema
+  - cs_schema_to_frictionless
+  - cs_schema_from_frictionless
+  - cs_to_coltypes
+  - cs_to_readr_spec
+
+- title: Wire format (codec)
+  desc: >
+    The packet encoding: percent-encoded tokens, CRC-32, packetization and
+    fragmentation, parsing, and recovery with verification.
+  contents:
+  - cs_encode_token
+  - cs_decode_token
+  - cs_crc32
+  - cs_packetize
+  - cs_fragment
+  - cs_parse_packets
+  - cs_recover
+
+- title: Redundancy and layout
+  desc: >
+    How many copies of each packet, and where they go across the rows.
+  contents:
+  - cs_copies
+  - cs_redundancy
+  - cs_survival
+  - cs_stripe
+  - cs_lay
+
+- title: Canary
+  desc: >
+    Sample fragile values per variable and detect, and name, data corruption.
+  contents:
+  - cs_canary
+  - cs_canary_sample
+  - cs_canary_check
+
+- title: Lower-level I/O
+  desc: >
+    Pieces used by the one-call writer and reader.
+  contents:
+  - cs_write_sidecar
+  - cs_apply_schema
+  - cs_detect_columns
+
+- title: Corruption simulators
+  desc: >
+    One function per threat-model vector, for testing your own pipeline.
+  contents:
+  - starts_with("cs_corrupt")
+
+- title: Data
+  contents:
+  - dg_states

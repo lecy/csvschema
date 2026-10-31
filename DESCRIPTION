@@ -35,5 +35,7 @@ Suggests:
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-URL: https://github.com/lecy/csvschema
+Config/Needs/website: Nonprofit-Open-Data-Collective/pkgstyle
+VignetteBuilder: knitr
+URL: https://github.com/lecy/csvschema, https://lecy.github.io/csvschema/
 BugReports: https://github.com/lecy/csvschema/issues

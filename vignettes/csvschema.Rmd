@@ -1,0 +1,119 @@
+---
+title: "Getting started with csvschema"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with csvschema}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r}
+library(csvschema)
+```
+
+A CSV is the most portable data format there is and the most forgetful: open it
+in a spreadsheet, a database loader, or another language and the types, factor
+levels, and missing-value codes are gone. `csvschema` writes a CSV that carries
+its own schema *inside ordinary data columns*, so the file is still a plain CSV
+everywhere, but this package can rebuild the schema when it reads the file back
+--- even after the file has been sorted, filtered, re-encoded, or passed through
+a spreadsheet.
+
+## Write and read
+
+The package ships `dg_states`, a 50-row table of US state facts whose columns
+cover every supported class: a factor (`region`), logicals (`south`, `west`),
+an integer (`motto_year`), several doubles, and free text with non-ASCII
+characters (`motto`).
+
+```{r}
+str(dg_states[, c("state", "region", "south", "motto_year", "motto")])
+```
+
+Write it with `cs_write()`:
+
+```{r}
+path <- tempfile(fileext = ".csv")
+cs_write(dg_states, path, verbose = FALSE)
+```
+
+The result is an ordinary CSV. The only difference from a plain export is two
+extra character columns, `_schema` and `_canary`, whose cells hold short ASCII
+tokens:
+
+```{r}
+raw <- read.csv(path, check.names = FALSE)
+setdiff(names(raw), names(dg_states))   # the added, ignorable meta columns
+substr(raw[["_schema"]][1], 1, 70)      # one cell holds packet tokens
+```
+
+Read it back with `cs_read_csv()`. The schema is recovered from those tokens and
+applied automatically:
+
+```{r}
+out <- cs_read_csv(path, verbose = FALSE)
+str(out[, c("region", "south", "motto_year")])
+```
+
+`region` is a factor again, `south` is logical, and `motto_year` is an integer
+--- none of which a plain `read.csv()` restores.
+
+## The report
+
+Every read attaches a report describing what was recovered and whether the data
+survived intact. Fetch it with `cs_report()`:
+
+```{r}
+rep <- cs_report(out)
+rep$status                 # schema recovery status
+head(rep$canary, 4)        # per-variable canary verdicts
+```
+
+`status = "verified"` means the schema was recovered in full and its
+whole-schema hash matched. The canary table reports, per variable, whether the
+data itself is still intact (more on that in `vignette("corruption")`).
+
+## Surviving row loss
+
+The schema is repeated and striped across the rows, so it survives losing most
+of them. Here we keep only 10 of the 50 rows and still recover the schema:
+
+```{r}
+few <- read.csv(path, check.names = FALSE)[seq(1, 50, by = 5), ]
+tmp <- tempfile(fileext = ".csv")
+write.csv(few, tmp, row.names = FALSE)
+
+out2 <- cs_read_csv(tmp, verbose = FALSE)
+cs_report(out2)$status
+```
+
+How many copies of each packet that takes is pure arithmetic:
+
+```{r}
+cs_copies(20, f = 0.2)   # copies needed to survive losing 80% of rows
+```
+
+## A sidecar, too
+
+`cs_write(..., sidecar = TRUE)` also writes a Frictionless `datapackage.json`
+beside the CSV. It is the canonical, human-editable, tool-standard copy of the
+schema; the in-band packets are the copy that cannot get lost. Each carries a
+hash of the other, so a reader can tell which is stale.
+
+```{r}
+dir <- tempfile(); dir.create(dir)
+csv <- file.path(dir, "states.csv")
+cs_write(dg_states, csv, sidecar = TRUE, verbose = FALSE)
+list.files(dir)
+```
+
+## Where to go next
+
+* `vignette("corruption")` --- the threat model, the corruption simulators, and
+  how damage is detected and named.
+* `vignette("design")` --- the wire format, the redundancy math, and the
+  internet-protocol ideas the format borrows.

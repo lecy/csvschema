@@ -32,6 +32,7 @@ All exported functions use the \code{cs_} prefix.
 Useful links:
 \itemize{
   \item \url{https://github.com/lecy/csvschema}
+  \item \url{https://lecy.github.io/csvschema/}
   \item Report bugs at \url{https://github.com/lecy/csvschema/issues}
 }
 
