@@ -24,6 +24,14 @@ Initial implementation, built bottom-up from the design brief.
   threat-model vector.
 * **Reporting** (`report.R`): the `cs_report` object, one-line summaries and
   tables.
+* **Specification** (`inst/specs/wire-format.md`): a normative,
+  language-independent description of the wire format.
+* **Compatibility matrix** (`inst/compat/`): a 2,000-row fixture round-tripped
+  through the scriptable CSV tools (base R, readr, data.table, arrow, vroom,
+  line-based subsets), with per-tool recovery and canary results; regenerate
+  with `data-raw/make_compat.R`.
+* **Documentation site**: a pkgdown site (NODC pkgstyle template) with three
+  vignettes, hosted from `main`/`docs`.
 
 ## Design notes and known limits
 

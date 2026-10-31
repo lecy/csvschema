@@ -105,6 +105,24 @@ cs_redundancy(20, 2000, f = 0.2)$sentence
   back as `NA`.
 * Erasure coding, non-CSV containers, and encryption are out of scope for v0.1.
 
+## Compatibility
+
+A fixture is round-tripped through common CSV tools and the recovery and
+data-damage results recorded in
+[`inst/compat/`](https://github.com/lecy/csvschema/blob/main/inst/compat/README.md).
+Every scriptable tool tested so far --- base R, readr, data.table, arrow,
+vroom, and line-based row subsets --- recovers the schema (`verified`); the
+canary names what each one did to the data (the zero-padded 9-digit ID and the
+17-digit ID are the usual casualties, read as an integer and a double). Other
+tools (Python, DuckDB, SQLite, spreadsheets, …) are listed there as not yet
+tested.
+
+## Specification
+
+The wire format is specified normatively, and independently of R, in
+[`inst/specs/wire-format.md`](https://github.com/lecy/csvschema/blob/main/inst/specs/wire-format.md)
+--- complete enough to write a conforming reader or writer in another language.
+
 ## Relationship to Frictionless
 
 The canonical schema model is Frictionless Table Schema v2. `csvschema` adds a

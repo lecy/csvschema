@@ -152,6 +152,16 @@
 </ul>
 </div>
 <div class="section level2">
+<h2 id="compatibility">Compatibility<a class="anchor" aria-label="anchor" href="#compatibility"></a>
+</h2>
+<p>A fixture is round-tripped through common CSV tools and the recovery and data-damage results recorded in <a href="https://github.com/lecy/csvschema/blob/main/inst/compat/README.md" class="external-link"><code>inst/compat/</code></a>. Every scriptable tool tested so far — base R, readr, data.table, arrow, vroom, and line-based row subsets — recovers the schema (<code>verified</code>); the canary names what each one did to the data (the zero-padded 9-digit ID and the 17-digit ID are the usual casualties, read as an integer and a double). Other tools (Python, DuckDB, SQLite, spreadsheets, …) are listed there as not yet tested.</p>
+</div>
+<div class="section level2">
+<h2 id="specification">Specification<a class="anchor" aria-label="anchor" href="#specification"></a>
+</h2>
+<p>The wire format is specified normatively, and independently of R, in <a href="https://github.com/lecy/csvschema/blob/main/inst/specs/wire-format.md" class="external-link"><code>inst/specs/wire-format.md</code></a> — complete enough to write a conforming reader or writer in another language.</p>
+</div>
+<div class="section level2">
 <h2 id="relationship-to-frictionless">Relationship to Frictionless<a class="anchor" aria-label="anchor" href="#relationship-to-frictionless"></a>
 </h2>
 <p>The canonical schema model is Frictionless Table Schema v2. <code>csvschema</code> adds a <em>wire encoding</em>, not a new schema language: <code><a href="reference/cs_schema_to_frictionless.html">cs_schema_to_frictionless()</a></code> and <code><a href="reference/cs_schema_from_frictionless.html">cs_schema_from_frictionless()</a></code> convert losslessly for the supported subset, and the sidecar is a standard Data Package.</p>

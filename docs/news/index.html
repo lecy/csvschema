@@ -63,6 +63,12 @@
 <strong>Simulators</strong> (<code>corrupt.R</code>): the <code>cs_corrupt_*()</code> family, one per threat-model vector.</li>
 <li>
 <strong>Reporting</strong> (<code>report.R</code>): the <code>cs_report</code> object, one-line summaries and tables.</li>
+<li>
+<strong>Specification</strong> (<code>inst/specs/wire-format.md</code>): a normative, language-independent description of the wire format.</li>
+<li>
+<strong>Compatibility matrix</strong> (<code>inst/compat/</code>): a 2,000-row fixture round-tripped through the scriptable CSV tools (base R, readr, data.table, arrow, vroom, line-based subsets), with per-tool recovery and canary results; regenerate with <code>data-raw/make_compat.R</code>.</li>
+<li>
+<strong>Documentation site</strong>: a pkgdown site (NODC pkgstyle template) with three vignettes, hosted from <code>main</code>/<code>docs</code>.</li>
 </ul><div class="section level3">
 <h3 id="design-notes-and-known-limits-0-0-0-9000">Design notes and known limits<a class="anchor" aria-label="anchor" href="#design-notes-and-known-limits-0-0-0-9000"></a></h3>
 <ul><li>The package name is <code>csvschema</code> and the API prefix is <code>cs_</code> (the brief used the working name <code>schemaless</code> / <code>sl_</code>).</li>
