@@ -1,6 +1,7 @@
 # csvschema
 
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/lecy/csvschema/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/lecy/csvschema/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 **Self-describing CSV files with embedded, loss-tolerant schemas.**
